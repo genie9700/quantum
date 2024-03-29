@@ -13,7 +13,7 @@ import socket
 import random
 import time
 import re
-import langid
+# import langid
 from rake_nltk import Rake
 import spacy
 from sumy.parsers.plaintext import PlaintextParser
