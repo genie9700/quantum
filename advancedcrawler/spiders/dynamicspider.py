@@ -2,7 +2,7 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
 from w3lib.html import get_base_url
-from langdetect import detect_langs
+# from langdetect import detect_langs
 from datetime import datetime
 from urllib.parse import urlparse
 from urllib.parse import urljoin
