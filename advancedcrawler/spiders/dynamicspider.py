@@ -2,7 +2,7 @@ import scrapy
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spiders import CrawlSpider, Rule
 from w3lib.html import get_base_url
-# from langdetect import detect_langs
+from langdetect import detect_langs
 from datetime import datetime
 from urllib.parse import urlparse
 from urllib.parse import urljoin
@@ -13,59 +13,59 @@ import socket
 import random
 import time
 import re
-# import langid
-# from rake_nltk import Rake
-# import spacy
-# from sumy.parsers.plaintext import PlaintextParser
-# from sumy.summarizers.text_rank import TextRankSummarizer
+import langid
+from rake_nltk import Rake
+import spacy
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.summarizers.text_rank import TextRankSummarizer
 
-# from sumy.parsers.html import HtmlParser
-# from sumy.nlp.tokenizers import Tokenizer
-# from sumy.nlp.stemmers import Stemmer
-# from sumy.utils import get_stop_words
-# from sumy.summarizers.lsa import LsaSummarizer
-# from sklearn.feature_extraction.text import TfidfVectorizer
-# from sklearn.metrics.pairwise import cosine_similarity
-# from readability import Readability
-# from readability.exceptions import ReadabilityException
-# import nltk
-# from textblob import TextBlob
-# import logging
-# import json
-# import networkx as nx
-# from scrapy.crawler import CrawlerProcess
-# from concurrent.futures import ThreadPoolExecutor
-# from functools import partial
-# from transformers import pipeline
-# from nltk.corpus import stopwords
-# from w3lib.html import remove_tags
-# from nltk.tokenize import word_tokenize
-# from nltk.tokenize import sent_tokenize
-# from nltk.cluster.util import cosine_distance
-# import numpy as np
-# from bs4 import BeautifulSoup
-# from bs4 import Comment
-# from collections import Counter
-# from heapq import nlargest
-# import heapq
-# from sklearn.feature_extraction.text import CountVectorizer
-# from sklearn.metrics.pairwise import cosine_similarity
-# from advancedcrawler.items import AdvancedcrawlerItem
-# import wordninja
+from sumy.parsers.html import HtmlParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
+from sumy.summarizers.lsa import LsaSummarizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from readability import Readability
+from readability.exceptions import ReadabilityException
+import nltk
+from textblob import TextBlob
+import logging
+import json
+import networkx as nx
+from scrapy.crawler import CrawlerProcess
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+from transformers import pipeline
+from nltk.corpus import stopwords
+from w3lib.html import remove_tags
+from nltk.tokenize import word_tokenize
+from nltk.tokenize import sent_tokenize
+from nltk.cluster.util import cosine_distance
+import numpy as np
+from bs4 import BeautifulSoup
+from bs4 import Comment
+from collections import Counter
+from heapq import nlargest
+import heapq
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from advancedcrawler.items import AdvancedcrawlerItem
+import wordninja
 # from readability import Document
 
 
 
 
-# from playwright.async_api import async_playwright
-# import asyncio
+from playwright.async_api import async_playwright
+import asyncio
 
 # Set up logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-# nltk.download('stopwords') #download and comment
-# nltk.download('punkt') #download and comment
-# Initialize BART summarization model
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+nltk.download('stopwords') #download and comment
+nltk.download('punkt') #download and comment
+Initialize BART summarization model
 
 
 
