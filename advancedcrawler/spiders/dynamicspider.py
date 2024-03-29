@@ -61,8 +61,8 @@ import re
 # import asyncio
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 # nltk.download('stopwords') #download and comment
 # nltk.download('punkt') #download and comment
 # Initialize BART summarization model
