@@ -51,6 +51,7 @@ import heapq
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from advancedcrawler.items import AdvancedcrawlerItem
+from advancedcrawler.pipelines import SolrPipeline
 import wordninja
 # from readability import Document
 
