@@ -64,16 +64,29 @@ import asyncio
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-nltk.download('stopwords') #download and comment
-nltk.download('punkt') #download and comment
-Initialize BART summarization model
-
+# nltk.download('stopwords') #download and comment
+# nltk.download('punkt') #download and comment
+# Initialize BART summarization model
+from scrapyd_api import ScrapydAPI 
+scrapyd = ScrapydAPI('http://localhost:6800')
 
 
 class DynamicSpider(CrawlSpider):
     name = 'myspider'
-    allowed_domains = ['www.pcdl.co']
-    start_urls = ['https://www.pcdl.co/']
+    allowed_domains = [
+        # 'loveworldsat.org',
+        # 'healingstreams.tv',
+        'loveworldmusic.org',
+        # 'lwappstore.com',
+        ]
+    
+    start_urls = [
+        # 'https://loveworldsat.org/',
+        # 'https://www.healingstreams.tv/',
+        # 'https://lmam360.com/',#have a down time
+        'https://loveworldmusic.org/',
+        # 'https://lwappstore.com/'
+        ]
 
     user_agents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36',
@@ -89,7 +102,7 @@ class DynamicSpider(CrawlSpider):
         super(DynamicSpider, self).__init__(*args, **kwargs)
         self.visited_urls = set()
         self.rake = Rake()  # Initialize Rake for keyword extraction
-        self.nlp = spacy.load("en_core_web_sm")  # Load spaCy model for NER
+        self.nlp = spacy.load("en_core_web_lg")  # Load spaCy model for NER
         self.page_rank_cache = {}  # Dictionary to store page rank results
         
         
@@ -169,11 +182,13 @@ class DynamicSpider(CrawlSpider):
             # Log the exception
             logger.error(f"Error processing URL: {response.url}. Error message: {str(e)}")
 
+   
+    
     async def parse_item_with_playwright(self, response, entities, sentiment, favicon_url, page_rank):
         with sync_playwright() as p:
             browser = p.firefox()
             page = browser.new_page()
-            await page.goto(response.url)
+            page.goto(response.url)
 
             # Perform Playwright actions here
             title = await page.title()
@@ -240,6 +255,15 @@ class DynamicSpider(CrawlSpider):
 
     def extract_meta_description(self, response):
         try:
+            # Parse the response body using BeautifulSoup
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Check if meta description is within an HTML comment
+            comments = soup.find_all(string=lambda text: isinstance(text, Comment))
+            for comment in comments:
+                if 'meta description' in comment:
+                    return None
+
             # List of XPath expressions or CSS selectors where meta descriptions might be found
             meta_description_selectors = [
                 '//meta[@name="description"]/@content',  # Example: <meta name="description" content="...">
@@ -254,13 +278,13 @@ class DynamicSpider(CrawlSpider):
                 if meta_description:
                     return meta_description.strip()
 
-            # If no meta description is found in any of the specified locations, return None
+            # If no meta description is found in any of the specified locations or within comments, return None
             return None
         except Exception as e:
             logger.warning(f"Error extracting meta description from URL: {response.url}. Error message: {str(e)}")
             return None
 
-   
+
 
     def extract_main_content(self, response):
         try:
@@ -272,8 +296,17 @@ class DynamicSpider(CrawlSpider):
                 tag.extract()
 
             # Remove inline style attributes
-            for tag in soup():
-                del tag['style']
+            for tag in soup.find_all(True):
+                if 'style' in tag.attrs:
+                    del tag['style']
+
+            # Remove script tags and their content
+            for script in soup.find_all('script'):
+                script.extract()
+
+            # Remove comments
+            for element in soup(text=lambda text: isinstance(text, Comment)):
+                element.extract()
 
             # Remove email addresses
             email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
@@ -285,6 +318,9 @@ class DynamicSpider(CrawlSpider):
             # Extract text from selected tags
             main_content += ' '.join(tag.get_text(separator=' ', strip=True) for tag in relevant_tags)
 
+            # Remove whitespace characters such as \t and \n
+            main_content = main_content.replace('\n', '').replace('\t', '')
+
             # Preprocess the main content
             main_content = self.preprocess_text(main_content)
 
@@ -293,11 +329,7 @@ class DynamicSpider(CrawlSpider):
             logger.warning(f"Error extracting main content from URL: {response.url}. Error message: {str(e)}")
             return None
 
-
    
-
-
-
     def extract_site_name(self, response):
         try:
             # Check if there's a specific tag that holds the site name
@@ -320,23 +352,12 @@ class DynamicSpider(CrawlSpider):
             # Extract site name from the URL
             url = response.url
             if url:
-                # Remove protocol (https:// or http://) and www prefix from the URL
-                domain = urlparse(url).netloc.replace("www.", "")
-
-                # Remove extension (.com, .org, etc.)
-                domain_without_extension = domain.split(".")[0]
-
-                # Split the domain into meaningful words using wordninja
-                words = wordninja.split(domain_without_extension)
-
-                # Capitalize each word
-                capitalized_words = [word.capitalize() for word in words]
-
-                # Join the capitalized words with spaces
-                site_name = ' '.join(capitalized_words)
-
-                # Return the extracted site name
-                return site_name.strip() if site_name else None
+                # Extract domain name from URL
+                domain = urlparse(url).netloc.replace("www.", "").split(".")[0]
+                # Further processing to split camelCase or PascalCase to separate words
+                # Split words based on camel case or Pascal case
+                site_name = re.sub(r'(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])', ' ', domain)
+                return site_name.strip().title() if site_name else None  # Capitalize the first letter of each word
             else:
                 return None
         except Exception as e:
@@ -798,7 +819,12 @@ class DynamicSpider(CrawlSpider):
             if meta_description and meta_description.strip():  # Check if meta description is available and not empty
                 return meta_description.strip()  # Use meta description as summary
 
-            # Extract main content
+            # If meta description is not available, check other relevant tags
+            about_us_text = self.extract_about_us_section(response)
+            if about_us_text:
+                return about_us_text.strip()
+
+            # If no relevant tags are found, proceed with extracting main content
             main_content = self.extract_main_content(response)
 
             # Preprocess the text
@@ -807,14 +833,17 @@ class DynamicSpider(CrawlSpider):
             # Tokenize sentences
             sentences = [sent.text for sent in self.nlp(preprocessed_text).sents]
 
+            # Remove duplicate sentences
+            unique_sentences = list(set(sentences))
+
             # Vectorize sentences
-            vectorizer = CountVectorizer().fit(sentences)
+            vectorizer = CountVectorizer().fit(unique_sentences)
 
             # Build similarity matrix
-            similarity_matrix = self.build_similarity_matrix(sentences, vectorizer)
+            similarity_matrix = self.build_similarity_matrix(unique_sentences, vectorizer)
 
             # Apply PageRank algorithm
-            scores = np.zeros(len(sentences))
+            scores = np.zeros(len(unique_sentences))
             damping_factor = 0.85
             epsilon = 1e-4
             delta = 1
@@ -825,15 +854,108 @@ class DynamicSpider(CrawlSpider):
 
             # Sort sentences by score and select top-ranked sentences
             top_sentence_indices = np.argsort(-scores)[:num_sentences]
-            summary = [sentences[i] for i in sorted(top_sentence_indices)]
+            summary = [unique_sentences[i] for i in sorted(top_sentence_indices)]
 
-            return " ".join(summary)
+            # Join the sentences to form the summary
+            refined_summary = " ".join(summary)
+
+            # Remove duplicated phrases
+            refined_summary = self.remove_duplicate_phrases(refined_summary)
+
+            return refined_summary
         except Exception as e:
             self.logger.error(f"Error generating summary for URL: {response.url}. Error message: {str(e)}")
             return None
 
+    def extract_about_us_section(self, response):
+        try:
+            # Common XPath expressions for locating the "About Us" section
+            xpath_expressions = [
+                '//div[contains(@class, "about")]',
+                '//div[contains(@class, "footer")]//p[contains(text(), "About")]/following-sibling::p',
+                '//footer//p[contains(text(), "About")]/following-sibling::p',
+                '//div[contains(@class, "about")]',
+                '//footer//*[contains(., "About")]'
+            ]
+
+            about_us_text = None
+            site_name = self.extract_site_name(response)
+            about_us_keywords = ['about us', f'about {site_name.lower()}']  # Keywords to filter out
+            for xpath_expr in xpath_expressions:
+                about_us_elements = response.xpath(xpath_expr)
+                if about_us_elements:
+                    about_us_text_list = []
+                    for element in about_us_elements:
+                        about_us_text_list.extend(element.xpath('.//text()').getall())
+                    about_us_text = ' '.join([text.strip() for text in about_us_text_list if text.strip() and not any(keyword in text.lower() for keyword in about_us_keywords)])
+                    if about_us_text:
+                        # Use regular expression to find the starting point of the site name
+                        site_name_match = re.search(re.escape(site_name), about_us_text, re.IGNORECASE)
+                        if site_name_match:
+                            about_us_text = about_us_text[site_name_match.start():]
+                        break
+
+            return about_us_text.strip() if about_us_text else None
+        except Exception as e:
+            self.logger.error(f"Error extracting 'About Us' section from URL: {response.url}. Error message: {str(e)}")
+            return None
 
 
+
+
+
+
+    # def summarize_about_us(self, about_us_text, num_sentences):
+        try:
+            if about_us_text:
+                # Tokenize sentences
+                sentences = [sent.text for sent in self.nlp(about_us_text).sents]
+
+                # Vectorize sentences
+                vectorizer = CountVectorizer().fit(sentences)
+
+                # Build similarity matrix
+                similarity_matrix = self.build_similarity_matrix(sentences, vectorizer)
+
+                # Apply PageRank algorithm
+                scores = np.zeros(len(sentences))
+                damping_factor = 0.85
+                epsilon = 1e-4
+                delta = 1
+                while delta > epsilon:
+                    new_scores = (1 - damping_factor) + damping_factor * np.dot(similarity_matrix.T, scores)
+                    delta = np.linalg.norm(new_scores - scores)
+                    scores = new_scores
+
+                # Sort sentences by score and select top-ranked sentences
+                top_sentence_indices = np.argsort(-scores)[:num_sentences]
+                summary = [sentences[i] for i in sorted(top_sentence_indices)]
+
+                return " ".join(summary)
+            else:
+                return None
+        except Exception as e:
+            self.logger.error(f"Error summarizing 'About Us' section. Error message: {str(e)}")
+            return None
+
+
+
+    def remove_duplicate_phrases(self, summary):
+        # Tokenize the summary
+        tokens = summary.split()
+
+        # Remove duplicates while preserving order
+        unique_tokens = []
+        for token in tokens:
+            if token not in unique_tokens:
+                unique_tokens.append(token)
+
+        # Reconstruct the summary
+        refined_summary = " ".join(unique_tokens)
+
+        return refined_summary
+
+        
 
     def preprocess_text(self, text):
         # Preprocess the text (tokenization, lemmatization, etc.)
@@ -881,8 +1003,11 @@ if __name__ == "__main__":
             'scrapy_playwright.downloadermiddlewares.PlaywrightRequestMiddleware': 101,
             'scrapy_playwright.downloadermiddlewares.PlaywrightResponseMiddleware': 101,
         },
-        'PLAYWRIGHT_BROWSER_PATH': '/home/genie/.cache/ms-playwright/chromium-1105/chrome-linux/chrome',
-        'PLAYWRIGHT_DOWNLOADS_PATH': '/home/genie/python/WORKSHOP/myproject',
+        # 'PLAYWRIGHT_BROWSER_PATH': '/home/genie/.cache/ms-playwright/chromium-1105/chrome-linux/chrome',
+        # 'PLAYWRIGHT_DOWNLOADS_PATH': '/home/genie/python/WORKSHOP/myproject',
     })
     process.crawl(DynamicSpider)
     process.start()
+
+
+
