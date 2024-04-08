@@ -12,7 +12,8 @@ BOT_NAME = "advancedcrawler"
 SPIDER_MODULES = ["advancedcrawler.spiders"]
 NEWSPIDER_MODULE = "advancedcrawler.spiders"
 
-
+# Solr configuration
+SOLR_URL = 'https://970f-188-166-153-130.ngrok-free.app/solr/my_core'
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = "advancedcrawler (+http://www.yourdomain.com)"
 
@@ -62,9 +63,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    "advancedcrawler.pipelines.AdvancedcrawlerPipeline": 300,
-#}
+ITEM_PIPELINES = {
+    "advancedcrawler.pipelines.SolrPipeline": 100,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
